@@ -1,0 +1,18 @@
+[Unit]
+Description=Scan to ban service
+
+[Service]
+Type=simple
+WorkingDirectory=/root/scan2ban/
+ExecStart=/root/scan2ban/scan2ban.py
+ExecReload=/bin/kill  $MAINPID
+KillMode=process
+Restart=on-failure
+User=root
+Group=root
+StandardOutput=syslog
+StandardError=syslog
+
+[Install]
+WantedBy=multi-user.target
+
