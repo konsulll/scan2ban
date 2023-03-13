@@ -23,7 +23,7 @@ moncmd: "journalctl -f" # команда, вывод которой будет �
 
 ## база данных sqlite3
 dbtype: "sqlite3"
-db: "/var/tmp/scan2ban.db:"
+db: "/var/tmp/scan2ban.db"
 
 ## база данных pg
 #dbtype: "pg"
