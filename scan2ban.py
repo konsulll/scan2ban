@@ -166,10 +166,15 @@ def initrules():
         for i in cfg['ignored_nets']:
             logInfo("Добавляем игнорируемую сеть: %s" % i)
             out = subprocess.check_output("iptables -A s2blog -s %s -j RETURN" % i, shell=True)
-        for i in cfg['ignored_ports']:
-            proto,port = i.split('/',1)
-            logInfo("Добавляем игнорирумый порт: %s" % i)
-            out = subprocess.check_output("iptables -A s2blog -p %s --dport %s -j RETURN" % (proto,port), shell=True)
+
+        ## проходим только если в списке нет None
+        if 'None' not in cfg['ignored_ports']:
+            for i in cfg['ignored_ports']:
+                proto,port = i.split('/',1)
+                logInfo("Добавляем игнорирумый порт: %s" % i)
+                out = subprocess.check_output("iptables -A s2blog -p %s --dport %s -j RETURN" % (proto,port), shell=True)
+        else:
+             logInfo("Ignored_ports is None")
 
         if cfg['fwlogmode'] == 'log':
             out = subprocess.check_output("iptables -A s2blog -j LOG --log-prefix '[S2BLOG]: ' --log-level 7", shell=True)
@@ -517,6 +522,7 @@ atexit.register(finish2)
 # готовим iptables
 initrules() ## создаем цепочки и минимальные правила
 
+logInfo("Загрузка правил")
 loadBlocked() ## заполняем блокировками из бд
 
 logDbg("Контрольная команда: " + cfg['moncmd']) 
@@ -534,6 +540,7 @@ linecipt = 0 # число обработанных строк
 lastclean=nowsec() # время последней очистки
 lastsync=nowsec() # время последней синхронизации
 
+logInfo("Выход на рабочий режим")
 while True:
     try:
         line = q.get_nowait() # or q.get(timeout=.1)
