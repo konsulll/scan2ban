@@ -26,13 +26,16 @@ parser.add_argument("-d","--debug", help="Запуск в режиме отла�
                     action="store_true")
 parser.add_argument("-f","--foreground", help="Консольный режим. Вывод статистики во время работы.", default=False,
                     action="store_true")
+parser.add_argument("-c","--config", help="Путь до конфигурационного файла", type=str, default="config.yml")
 
 args = parser.parse_args()
 
+print(args)
 ON_POSIX = 'posix' in sys.builtin_module_names
 
 # грузим конфиг
-with open('config.yml', 'r') as f:
+# access to namespace https://stackoverflow.com/questions/69981912/why-i-am-getting-this-error-typeerror-namespace-object-is-not-subscriptable
+with open(args.config, 'r') as f:
     cfg = load(f)
 
 dbtype = cfg['dbtype']
@@ -87,6 +90,7 @@ def logDbg(data):
     """: печать отладочного сообщения
     @param data текст ошибки
     """
+
     if args.debug:
         prnmsg("DEBUG",data)
 
@@ -272,16 +276,10 @@ def initDb():
         sys.exit(2)
 
     try: 
-        if cfg['dbtype'] == 'sqlite3':
-            cur.execute("""CREATE TABLE IF NOT EXISTS ips(ip INTEGER NOT NULL PRIMARY KEY,count INTEGER,block INTEGER,last INT); """)
-            cur.execute("""CREATE TABLE IF NOT EXISTS details(id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,src INTEGER NOT NULL,dst INTEGER NOT NULL,port INTEGER NOT NULL,time INT); """)
-        elif cfg['dbtype'] == 'pg':
-            cur.execute("""CREATE TABLE IF NOT EXISTS ips(ip BIGINT NOT NULL PRIMARY KEY,count INTEGER,block SMALLINT,last INT); """)
-            cur.execute("""CREATE TABLE IF NOT EXISTS details(id serial PRIMARY KEY,src BIGINT NOT NULL,dst BIGINT NOT NULL,port INTEGER NOT NULL,time INT); """)
-        else:
-            logCrit("Ошибка создания таблиц")
-            sys.exit(2)
-
+        with open("db/scheme/" + cfg['dbtype'] + ".sql") as file:
+            for line in file:
+                print(line)
+                cur.execute(line)
         sql.commit()
         logInfo("База данных '%s:%s' подключена" % (dbtype,cfg['db']))
         return sql,cur
