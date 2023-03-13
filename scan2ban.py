@@ -77,6 +77,12 @@ def logInfo(data):
     """
     prnmsg("NOTICE",data)
 
+def logWarn(data):
+    """: печать информационного сообщения
+    @param data текст ошибки
+    """
+    prnmsg("WARNING",data)
+
 def logDbg(data):
     """: печать отладочного сообщения
     @param data текст ошибки
@@ -160,6 +166,10 @@ def initrules():
         for i in cfg['ignored_nets']:
             logInfo("Добавляем игнорируемую сеть: %s" % i)
             out = subprocess.check_output("iptables -A s2blog -s %s -j RETURN" % i, shell=True)
+        for i in cfg['ignored_ports']:
+            proto,port = i.split('/',1)
+            logInfo("Добавляем игнорирумый порт: %s" % i)
+            out = subprocess.check_output("iptables -A s2blog -p %s --dport %s -j RETURN" % (proto,port), shell=True)
 
         if cfg['fwlogmode'] == 'log':
             out = subprocess.check_output("iptables -A s2blog -j LOG --log-prefix '[S2BLOG]: ' --log-level 7", shell=True)
@@ -407,15 +417,19 @@ def addIPTRule(src,msg):
     @param msg  комментарий
     """
     global nowblocked,nowblockedcomm
+    logDbg("addIPTRule: " + src)
     run(["iptables", "-I","s2bdrop","-s",src,"-j","s2bdroplog","-m","comment","--comment",msg])
     nowblocked[src] = 1
     nowblockedcomm[src] = msg
 
 def delIPTRule(src):
     """: удаление правила пенеправление в цепочку блокировки."""
+    logDbg("delIPTRule: " + src)
     global nowblocked,nowblockedcomm
-    run(["iptables", "-D","s2bdrop","-s",src,"-j","s2bdroplog","-m","comment","--comment",nowblockedcomm[src]])
-    del nowblocked[src],nowblockedcomm[src]
+    ## Проверяем, что адрес есть в списке локальных блокировок
+    if src in nowblocked:
+        run(["iptables", "-D","s2bdrop","-s",src,"-j","s2bdroplog","-m","comment","--comment",nowblockedcomm[src]])
+        del nowblocked[src],nowblockedcomm[src]
 
 def updateDBIPState(src):
     """: указываем в таблице ips что адрес заблокирован """
@@ -470,11 +484,7 @@ def cleanBlocks():
         src = long2ip(srcl)
         count = row[1]
         logInfo("Истечение времени неактивности для адреса: %s, пакетов: %d" % (src,count))
-        ## из iptables удалется только если счетчик выше порога, т.к. иначе правила там нет
-        # FIXME ne vipolnyaetsa dlia instant_ports
-        if count > cfg['blockcnt']:
-            logDbg("Удаление правила iptables")
-            delIPTRule(src)
+        delIPTRule(src)
     ## удаляем соответствующие строки из бд
         logDbg("Удаление записи из бд")
         try:
